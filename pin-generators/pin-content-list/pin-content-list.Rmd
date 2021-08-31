@@ -3,14 +3,11 @@ title: "Pin Content List for Audit Report"
 output: html_document
 ---
 
+`r gitlink::ribbon_css("https://github.com/kellobri/rsc-admin-showcase", text="CREATES A PIN", color = 'orange', fade = FALSE)`
+
 `r if(Sys.getenv('CONNECT_SERVER') == '') { "<h4>ERROR: You must set the CONNECT_SERVER environment variable</h4>\n" }`
 `r if(Sys.getenv('CONNECT_API_KEY') == '') { "<h4>ERROR: You must set the CONNECT_API_KEY environment variable</h4>\n" }`
 `r if(Sys.getenv('CONNECT_API_KEY') == '' || Sys.getenv('CONNECT_SERVER') == '') { knitr::knit_exit() }`
-
-```{r echo=FALSE}
-library(gitlink)
-ribbon_css("https://github.com/sol-eng/rsc-audit-reports", text = "Creates a Pin", color = "orange", fade = FALSE)
-```
 
 List all content items visible to the requesting user.
 
