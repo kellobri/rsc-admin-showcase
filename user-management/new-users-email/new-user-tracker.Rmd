@@ -13,14 +13,16 @@ params:
     value: 1
 ---
 
-```{r preflight_check, results='asis', include=TRUE}
+`r gitlink::ribbon_css("https://github.com/kellobri/rsc-admin-showcase", text="EXAMPLE CONTENT", color = 'red', fade = FALSE)`
+
+```{r preflight_check, echo=FALSE, results='asis'}
 if (
-  nchar(Sys.getenv("RSTUDIO_CONNECT_SERVER")) == 0 ||
-  nchar(Sys.getenv("RSTUDIO_CONNECT_API_KEY")) == 0
+  nchar(Sys.getenv("CONNECT_SERVER")) == 0 ||
+  nchar(Sys.getenv("CONNECT_API_KEY")) == 0
 ) {
   print(htmltools::h4("ERROR: Variables Not Defined"))
   print(htmltools::div(
-    "The RSTUDIO_CONNECT_SERVER and RSTUDIO_CONNECT_API_KEY",
+    "The CONNECT_SERVER and CONNECT_API_KEY",
     "environment variables are required in order for this report",
     "to manage users. The API_KEY should represent an administrator",
     htmltools::br(),
@@ -61,9 +63,9 @@ get_all_users <- function(connect){
   
   return(users)
 }
-conn <- Connect$new(
-  host = Sys.getenv("RSTUDIO_CONNECT_SERVER"),
-  api_key = Sys.getenv("RSTUDIO_CONNECT_API_KEY")
+conn <- connect(
+  server = Sys.getenv("CONNECT_SERVER"),
+  api_key = Sys.getenv("CONNECT_API_KEY")
 )
 ```
 
@@ -71,7 +73,7 @@ conn <- Connect$new(
 ## Gather New Users from the Past `r params$days_back` Day(s)
 
 ```{r data_prep}
-users <- get_all_users(conn)
+users <- get_users(conn, page_size = 500)
 users <- users %>% mutate(
   created_date_ts = lubridate::ymd_hms(created_time)
 )

@@ -49,9 +49,9 @@ audits %>% rsc_card()
 **Pin Generators** are run on a daily basis. They require an Admin API Key to pull complete data from the RStudio Connect server, and as the name suggests, they produce Pins.
 
 ```{r}
-all_content %>%
-  by_tag("Pin Generators") %>%
-  rsc_card()
+#all_content %>%
+#  by_tag("Pin Generators") %>%
+#  rsc_card()
 ```
 
 #### Pins
@@ -63,9 +63,9 @@ all_content %>%
 As a **Publisher**, you may request access to any **Pins** you need for generating reports relevant to your team's KPIs. For more complex auditing tasks, you may want to create your own Pins and Pin Generators that run on a schedule. Decomposing the steps of an audit report into Pins can be beneficial when components need to be reused across multiple reports, or to keep overall code complexity in check. The drawback is decomposition can increase the complexity required to schedule report execution to occur in the correct sequence.
 
 ```{r echo=FALSE}
-all_content %>%
-  by_tag("Pins") %>%
-  rsc_table()
+#all_content %>%
+#  by_tag("Pins") %>%
+#  rsc_table()
 ```
 
 ### Content Usage

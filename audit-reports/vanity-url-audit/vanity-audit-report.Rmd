@@ -8,14 +8,11 @@ rmd_output_metadata:
     - "vanity-url-audit.csv"
 ---
 
+`r gitlink::ribbon_css("https://github.com/kellobri/rsc-admin-showcase", text="EXAMPLE CONTENT", color = 'red', fade = FALSE)`
+
 `r if(Sys.getenv('CONNECT_SERVER') == '') { "<h4>ERROR: You must set the CONNECT_SERVER environment variable</h4>\n" }`
 `r if(Sys.getenv('CONNECT_API_KEY') == '') { "<h4>ERROR: You must set the CONNECT_API_KEY environment variable</h4>\n" }`
 `r if(Sys.getenv('CONNECT_API_KEY') == '' || Sys.getenv('CONNECT_SERVER') == '') { knitr::knit_exit() }`
-
-```{r echo=FALSE}
-library(gitlink)
-ribbon_css("https://github.com/sol-eng/rsc-audit-reports", text = "EXAMPLE CONTENT", color = "red", fade = FALSE)
-```
 
 ## List all defined vanity URLs on the RStudio Connect server
 
