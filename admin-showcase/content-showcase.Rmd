@@ -1,0 +1,87 @@
+---
+title: "&nbsp;"
+output: html_document
+---
+
+![](showcase-banner.png)
+
+```{r include=FALSE}
+library(connectwidgets)
+library(dplyr)
+
+all_content <- connect() %>% content() 
+```
+
+## Content Showcase for Admins {.tabset}
+
+Extend RStudio Connect with pre-built content that leverages the Connect Server APIs.
+
+-   Deploy reports and applications directly from this window
+-   Access the code on GitHub to copy and customize it before deploying
+
+### Audit Reports
+
+Using the RStudio Connect Server API, administrators can create scheduled reports to track and manage the content on their servers. These reports are highly customizable and make calls to the RSC Server API directly, or join/pull data from an available Pin.
+
+**Use the report templates to answer questions like...**
+
+-   How do I produce a list of all the content we have published to RStudio Connect?
+-   Which applications can be accessed by which people and which groups?
+-   Which versions of R and Python are actually being used, and by which publishers?
+-   How much unpublished content is on the server?
+-   Which vanity URLs do we have in use across the server, and how do I list them out?
+
+**Administrators Only:** Give yourself collaborator permissions on any existing report to be added to the scheduled email digest or accompanying conditional alert.
+
+```{r echo=FALSE}
+audits <- all_content %>%
+  by_tag("Audit Reports")
+
+audits %>% rsc_card()
+```
+
+### Pins Generators
+
+#### Pin Generators
+
+**Access Request Notes:** Publishers may request viewer access to these content items; collaborator access requests will be denied.
+
+**Pin Generators** are run on a daily basis. They require an Admin API Key to pull complete data from the RStudio Connect server, and as the name suggests, they produce Pins.
+
+```{r}
+all_content %>%
+  by_tag("Pin Generators") %>%
+  rsc_card()
+```
+
+#### Pins
+
+**Click through to be redirected to a Pin (including preview and access instructions) on RStudio Connect.**
+
+**Access Request Notes:** Publishers may request viewer access to these content items; collaborator access requests will be denied. Viewer access will grant the permission level required to pull a Pin and make use of it in another report.
+
+As a **Publisher**, you may request access to any **Pins** you need for generating reports relevant to your team's KPIs. For more complex auditing tasks, you may want to create your own Pins and Pin Generators that run on a schedule. Decomposing the steps of an audit report into Pins can be beneficial when components need to be reused across multiple reports, or to keep overall code complexity in check. The drawback is decomposition can increase the complexity required to schedule report execution to occur in the correct sequence.
+
+```{r echo=FALSE}
+all_content %>%
+  by_tag("Pins") %>%
+  rsc_table()
+```
+
+### Content Usage
+
+The examples are generated using the RStudio Connect Server API. The API and data collection are both available as of RStudio Connect 1.7.0. The API contains data to help answer questions like:
+
+-   What content is most visited?
+-   Who is visiting my content?
+-   What reports are most common?
+-   Has viewership increased over time?
+-   Did my CEO actually visit this app?
+
+A data science team's time is precious, this data will help you focus and justify your efforts.
+
+### User Management
+
+#### New Users Report
+
+#### Chargeback Calculator
