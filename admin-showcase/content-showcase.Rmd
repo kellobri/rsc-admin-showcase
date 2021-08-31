@@ -40,7 +40,7 @@ audits <- all_content %>%
 audits %>% rsc_card()
 ```
 
-### Pins Generators
+### Pin Generators
 
 #### Pin Generators
 
