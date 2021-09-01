@@ -1,8 +1,6 @@
 ---
 title: '&nbsp;'
 output: html_document
-resource_files:
-- pins-diagram.png
 ---
 
 ![](showcase-banner.png)
@@ -23,7 +21,7 @@ Extend RStudio Connect with pre-built content that leverages the Connect Server 
 
 ### Audit Reports
 
-Using the RStudio Connect Server API, administrators can create scheduled reports to track and manage the content on their servers. 
+Using the RStudio Connect Server API, administrators can create scheduled reports to track and manage the content on their servers.
 
 **Use the report templates to answer questions like...**
 
@@ -44,7 +42,7 @@ audits %>% rsc_card()
 
 **Pin Generators** are R Markdown reports that run on a schedule to create or update a pinned resource. These examples require an Admin API Key to pull complete data from the RStudio Connect server.
 
-```{r}
+```{r echo=FALSE}
 all_content %>%
   by_tag("Pin Generators") %>%
   rsc_card()
@@ -52,10 +50,9 @@ all_content %>%
 
 #### About Pins
 
-![pins-diagram.png]
+![](pins-diagram.png)
 
 As a **Publisher**, you may request access to any **Pins** you need for generating reports relevant to your team's KPIs. For more complex auditing tasks, you may want to create your own Pins and Pin Generators that run on a schedule. Decomposing the steps of an audit report into Pins can be beneficial when components need to be reused across multiple reports, or to keep overall code complexity in check. The drawback is decomposition can increase the complexity required to schedule report execution to occur in the correct sequence.
-
 
 ### Content Usage
 
@@ -75,7 +72,7 @@ all_content %>%
 
 More information about what is possible to do with the RStudio Connect Server API, how to access and how to interact with it can be found in the official reference guide here: [RStudio Connect API Reference](https://docs.rstudio.com/connect/api/#tag--Instrumentation).
 
-* Additional References: RStudio::Solutions [Guide to Usage Tracking](https://solutions.rstudio.com/data-science-admin/tracking/#usage-tracking)
+-   Additional References: RStudio::Solutions [Guide to Usage Tracking](https://solutions.rstudio.com/data-science-admin/tracking/#usage-tracking)
 
 ### User Management {.tabset}
 
