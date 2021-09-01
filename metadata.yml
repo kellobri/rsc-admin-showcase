@@ -1,7 +1,7 @@
 "content/b96d853d-0aab-4419-bb19-0e30416ce337/tag-audit-report.html": {
     repoURL: "https://github.com/kellobri/rsc-admin-showcase",
     branchName: "main",
-    directory: "audit-reports/tag-usage-audit",
+    directory: "audit-reports/tag-use-audit",
     contentTitle: "Tag Usage Audit",
     name: "tag-audit-report",
     detailedDescription: "This R Markdown report uses the /v1/tags and /v1/tags/{id}/content API endpoints available in RStudio Connect 1.8.6 and later.",
