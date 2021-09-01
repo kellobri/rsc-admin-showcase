@@ -4,7 +4,7 @@
   "platform": "4.1.1",
   "metadata": {
     "appmode": "rmd-static",
-    "primary_rmd": "pin-content-list.Rmd",
+    "primary_rmd": "pin-users-groups.Rmd",
     "primary_html": null,
     "content_category": null,
     "has_parameters": false
@@ -1351,11 +1351,11 @@
     }
   },
   "files": {
-    "pin-content-list.html": {
-      "checksum": "9a03a43cfda302dacf532acd3395d518"
+    "pin-users-groups.html": {
+      "checksum": "e7b87aa58550caf59dab0f94cf39ad8f"
     },
-    "pin-content-list.Rmd": {
-      "checksum": "1c21da5fe0fbc36e702cca5174301936"
+    "pin-users-groups.Rmd": {
+      "checksum": "ffcb5df1083dc7564903650837801385"
     }
   },
   "users": null
