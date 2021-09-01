@@ -74,9 +74,9 @@ The examples are generated using the RStudio Connect Server API. The API and dat
 A data science team's time is precious, this data will help you focus and justify your efforts.
 
 ```{r echo=FALSE}
-#all_content %>%
-#  by_tag("Content Usage") %>%
-#  rsc_card()
+all_content %>%
+  by_tag("Content Usage") %>%
+  rsc_card()
 ```
 
 ### User Management {.tabset}

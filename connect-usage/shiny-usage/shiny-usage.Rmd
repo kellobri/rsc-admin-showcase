@@ -1,0 +1,143 @@
+---
+title: "Shiny Application Usage Report"
+output: 
+  html_document:
+    theme: united
+---
+
+`r gitlink::ribbon_css("https://github.com/kellobri/rsc-admin-showcase", text="EXAMPLE CONTENT", color = 'red', fade = FALSE)`
+
+Connect records visits to Shiny applications and lets you see:
+
+* Which applications were viewed
+* When the applications were viewed
+* Who viewed the application
+* The length of each session
+
+Details about each visit are available through the [Instrumentation APIs](https://docs.rstudio.com/connect/api/#tag--Instrumentation). Use these records to perform your own analysis. 
+
+Code examples showing how to access the instrumentation data are in the [User Activity](https://docs.rstudio.com/connect/cookbook/user-activity/) recipes within the RStudio Connect API Cookbook.
+
+## Report on Shiny Usage over the last 28 Days
+
+**Time Windows**
+
+This API accepts optional from and to timestamps to define a window of interest. If from is not specified, it is assumed to be before the earliest recorded information. If to is not specified, it is assumed to be "now".
+
+Any visit to content that falls inclusively within the time window will be part of the result set.
+
+_The information returned is based on data collected by RStudio Connect as users visit Shiny applications. Because of how visits are detected, end times will be slightly inflated by a reconnect timeout, generally around 15 seconds._
+
+```{r include=FALSE}
+library(connectapi)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+library(ggthemes)
+
+# Connect to the server
+client <- connect()
+
+# Get Shiny usage data for the last 28 days
+from <- Sys.Date() - lubridate::days(28)
+usage <- get_usage_shiny(client, from = from, limit = Inf) %>%
+  mutate(
+    started = lubridate::ymd_hms(started),
+    ended = lubridate::ymd_hms(ended),
+    session_duration = ended - started
+  ) %>%
+  filter(session_duration > lubridate::dseconds(5))
+
+# Get all users
+all_users <- get_users(client, page_size = 500)
+
+# Get all content
+all_content <- get_content(client)
+```
+
+
+### Top Applications 
+
+The top 5 applications over the last 28-day period. 
+
+```{r echo=FALSE}
+# Calculate the applications with the most sessions
+top_apps <- usage %>% 
+  group_by(content_guid) %>% 
+  summarize(visits = n()) %>% 
+  arrange(desc(visits)) %>% 
+  head(5) %>%
+  mutate(name = purrr::map_chr(content_guid, ~ content_title(client, .x)))
+
+# Show top applications in a plot
+top_apps %>% 
+  {ggplot(., aes(reorder(stringr::str_wrap(name, 30), visits), visits)) + 
+     geom_bar(stat = "identity") +  
+     coord_flip() + 
+     theme_economist() +
+     labs(
+       y = "# of Shiny Sessions",
+       x = NULL
+     )}
+```
+
+#### Application Details
+
+```{r echo=FALSE}
+library(reactable)
+
+# Provide Links to the Top Apps
+app_info <- top_apps %>%
+  left_join(all_content, by = c("content_guid" = "guid")) %>%
+  rename(guid = content_guid) %>%
+  left_join(all_users, by = c(owner_guid = "guid")) %>%
+  mutate(link_title = paste('<a href="',dashboard_url,'">',title,'</a>', sep = "")) %>%
+  select(guid, username, link_title, app_mode)
+  
+reactable::reactable(app_info,
+                     columns = list(
+                       guid = colDef(name = "Content GUID"),
+                       username = colDef(name = "Owner"),
+                       link_title = colDef(name = "Title", html = T),
+                       app_mode = colDef(name = "App Mode")
+                     ))
+```
+
+
+## Shiny Sessions Over Time
+
+```{r echo=FALSE}
+usage %>% mutate(day = round_date(started, "day")) %>% 
+    group_by(day) %>% 
+    summarise(visits = n()) %>% 
+    arrange(desc(visits)) %>% 
+    {ggplot(., aes(day, visits)) + 
+     geom_bar(stat = "identity") + 
+     theme_economist() +
+     labs(
+       y = "# of Shiny Sessions",
+       x = NULL
+     )}
+```
+
+## Shiny Sessions by User (Top 5)
+
+```{r echo=FALSE}
+usage %>%
+    group_by(user_guid) %>% 
+    summarise(visits = n()) %>% 
+    left_join(all_users, by = c(user_guid = "guid")) %>%
+    mutate(username = coalesce(username, "anonymous")) %>%
+    select(username, visits) %>% 
+    arrange(desc(visits)) %>% 
+    head(5) %>% 
+    {ggplot(., aes(reorder(username, visits), visits)) + 
+     geom_bar(stat = "identity") +  
+     coord_flip() + 
+     theme_economist() +
+     labs(
+       y = "Number of Shiny Sessions",
+       x = NULL
+     )}
+```
+
