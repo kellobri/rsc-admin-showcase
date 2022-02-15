@@ -1,0 +1,141 @@
+---
+title: "Content Permissions Audit"
+output: 
+  html_document:
+    theme: lumen
+---
+
+`r gitlink::ribbon_css("https://github.com/kellobri/rsc-admin-showcase", text="EXAMPLE CONTENT", color = 'red', fade = FALSE)`
+
+`r if(Sys.getenv('CONNECT_SERVER') == '') { "<h4>ERROR: You must set the CONNECT_SERVER environment variable</h4>\n" }`
+`r if(Sys.getenv('CONNECT_API_KEY') == '') { "<h4>ERROR: You must set the CONNECT_API_KEY environment variable</h4>\n" }`
+`r if(Sys.getenv('CONNECT_API_KEY') == '' || Sys.getenv('CONNECT_SERVER') == '') { knitr::knit_exit() }`
+
+## First: List all content items on the RStudio Connect server
+
+To pull a complete list of the content items on your Connect server, you must use an API key generated from an Admin account. Publisher account API keys will only return content items which the publisher user has been given access to view or edit.
+
+Requirements:
+
+- [Administrator API Key](https://docs.rstudio.com/connect/user/api-keys/#api-keys-creating){target="_blank"}
+- RStudio Connect server URL
+
+```{r include=FALSE}
+library(httr)
+library(tidyr)
+
+# Use the /v1/content endpoint to retrieve the full list of content items
+result <- GET(
+  paste0(Sys.getenv("CONNECT_SERVER"),"__api__/v1/content"),
+    add_headers(Authorization = paste("Key", Sys.getenv("CONNECT_API_KEY"))))
+
+# Create a tibble for the content list result response
+df_full <- unnest_wider(tibble::tibble(dat = content(result)), dat) 
+```
+
+---
+
+## Then: Get Content Permissions Lists
+
+```{r message=FALSE, warning=FALSE}
+library(dplyr)
+library(lubridate)
+
+# Filter down to content created in the last year
+df_recent <- df_full %>%
+  filter(created_time >= today() - years(1))
+
+# Filter down to content with access_type = acl
+acl_content <- df_recent %>%
+  filter(access_type == 'acl')
+
+# Function for initializing an empty permissions tibble
+empty_permissions <- function() {
+  cols <- c('id','content_guid','principal_guid','principal_type','role')
+  cols %>% purrr::map_dfc(setNames, object = list(character()))
+}
+
+# Function for calling the content `/permissions` API endpoint
+get_permissions <- function(guid) {
+  permissions <- GET(paste0(Sys.getenv("CONNECT_SERVER"),"__api__/v1/content/",guid,"/permissions"),
+    add_headers(Authorization = paste("Key", Sys.getenv("CONNECT_API_KEY"))))
+  
+  if (status_code(permissions) == 200){
+    result <- tidyr::unnest_wider(tibble::tibble(dat = content(permissions)), dat)
+    if (dim(result)[1] == 0){
+      empty_permissions() 
+    } else {
+      result
+    }
+  } else {
+    empty_permissions()
+  }
+}
+
+# Get permissions for all ACL-type content items
+# Content that is accessible only by the publisher-owner (no additional users or groups) will return no records
+acl_info <- purrr::map(acl_content$guid, get_permissions)
+acl_tibble <- tidyr::unnest(tibble::tibble(dat = acl_info), dat)
+
+```
+
+
+```{r message=FALSE, warning=FALSE}
+# Get User and Groups Information
+
+library(pins)
+board <- board_rsconnect()
+
+# Retrieve Users and Groups Pins
+users <- board %>% pin_read("kelly.obriant/user-info")
+groups <- board %>% pin_read("kelly.obriant/group-info")
+
+# Join acl_tibble with user names
+prin_user <- acl_tibble %>% 
+  filter(principal_type == 'user') %>%
+  left_join(users, by=c("principal_guid" = "guid")) %>%
+  left_join(df_recent, by=c("content_guid" = "guid")) %>%
+  select(username, role, name, title, content_url)
+
+# Join acl_tibble with group names
+prin_group <- acl_tibble %>%
+  filter(principal_type == 'group') %>%
+  left_join(groups, by=c("principal_guid" = "guid")) %>%
+  left_join(df_recent, by=c("content_guid" = "guid")) %>%
+  select(name.x, role, name.y, title, content_url)
+
+```
+
+## Users Access Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(reactable)
+
+# Use reactable to create a nicely formatted table
+reactable(prin_user, searchable = TRUE, highlight = TRUE, columns = list(
+  username = colDef(name = "Username"),
+  role = colDef(name = "Role Permissions"),
+  name = colDef(name = "Content Name"),
+  title = colDef(name = "Content Title"),
+  content_url = colDef(name = "Content URL", cell = function(value) {
+    htmltools::tags$a(href = value, target = "_blank", "Link")
+    })
+))
+```
+
+## Groups Access Table
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(reactable)
+
+# Use reactable to create a nicely formatted table
+reactable(prin_group, searchable = TRUE, highlight = TRUE, columns = list(
+  name.x = colDef(name = "Group Name"),
+  role = colDef(name = "Role Permissions"),
+  name.y = colDef(name = "Content Name"),
+  title = colDef(name = "Content Title"),
+  content_url = colDef(name = "Content URL", cell = function(value) {
+    htmltools::tags$a(href = value, target = "_blank", "Link")
+    })
+))
+```
