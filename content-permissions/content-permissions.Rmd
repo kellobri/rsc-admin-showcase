@@ -96,6 +96,8 @@ library(pins)
 board <- board_rsconnect()
 
 # Retrieve Users and Groups Pins
+
+# REPLACE PIN NAMES 
 users <- board %>% pin_read("kelly.obriant/user-info")
 groups <- board %>% pin_read("kelly.obriant/group-info")
 
