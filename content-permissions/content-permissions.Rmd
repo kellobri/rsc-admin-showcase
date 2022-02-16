@@ -82,6 +82,15 @@ acl_tibble <- tidyr::unnest(tibble::tibble(dat = acl_info), dat)
 
 ```{r message=FALSE, warning=FALSE}
 # Get User and Groups Information
+#
+# CODE BELOW CALLS PRE-EXISTING PINS
+# Set up pins for users and groups info by publishing this report:
+# https://github.com/kellobri/rsc-admin-showcase/tree/main/pin-generators/pin-users-groups
+# and setting it up to run on a schedule.
+#
+# ALTERNATIVELY 
+# Rather than use Pins, you can always call the users and groups info APIs directly. Find example code in the same report referenced above (/pin-generators/pin-users-groups).
+#
 
 library(pins)
 board <- board_rsconnect()
