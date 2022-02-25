@@ -1,0 +1,85 @@
+---
+title: "R+Python versions in use"
+---
+
+This document analyzes the R and Python interpreter versions used to
+run content on the RStudio Connect server. The table presents the 
+number of unique content items currently using each combination of
+R and Python versions.
+
+
+```{r setup, echo = FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, echo = FALSE, message = FALSE}
+library(httr)
+library(jsonlite)
+library(magrittr)
+library(dplyr)
+library(knitr)
+
+# Ignore summarise telling us about the grouping.
+options(dplyr.summarise.inform = FALSE)
+```
+
+```{r verification, echo = FALSE}
+# Confirm that environment variables are available.
+connectServer <- Sys.getenv("CONNECT_SERVER")
+if (nchar(connectServer) == 0) {
+  stop("Set the CONNECT_SERVER environment variable.")
+}
+connectAPIKey <- Sys.getenv("CONNECT_API_KEY")
+if (nchar(connectAPIKey) == 0) {
+  stop("Set the CONNECT_API_KEY environment variable.")
+}
+contentURL <- paste0(connectServer, "/__api__/v1/content")
+```
+
+```{r fetch, echo = FALSE}
+# Fetch all content items from RStudio Connect.
+res <- httr::GET(
+  contentURL,
+  httr::add_headers(Authorization = paste("Key", connectAPIKey)),
+  httr::write_memory()
+)
+if (httr::http_error(res)) {
+  err <- sprintf(
+    "%s request failed with %s",
+    res$request$url,
+    httr::http_status(res)$message
+  )
+  message(capture.output(str(httr::content(res))))
+  stop(err)
+}
+payload <- httr::content(res, as = "text")
+apps <- jsonlite::fromJSON(payload, simplifyDataFrame = TRUE)
+```
+
+```{r report, echo = FALSE}
+# Retain only MAJOR.MINOR version components.
+major_minor <- function(versions) {
+  sapply(versions, function(version) {
+    if (is.na(version) || version == "") {
+      NA
+    } else {
+      parts <- strsplit(version, ".", fixed = TRUE)[[1]]
+      paste(parts[1:2], collapse = ".")
+    }
+  })
+}
+
+# Report the number of content items with each combination of
+# R and Python MAJOR.MINOR versions.
+r_py <- apps %>% 
+  mutate(
+    R = major_minor(r_version), 
+    Python = major_minor(py_version)) %>% 
+  select(R, Python) %>% 
+  group_by(R, Python) %>% 
+  summarise(N = n()) %>% 
+  arrange(desc(R), desc(Python)) %>%
+  ungroup()
+
+kable(r_py)
+```
