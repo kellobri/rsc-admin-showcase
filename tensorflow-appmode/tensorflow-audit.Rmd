@@ -1,0 +1,172 @@
+---
+title: "TensorFlow API Content Audit"
+output: 
+  html_document:
+    theme: lumen
+rmd_output_metadata:
+  rsc_output_files:
+    - "tensorflow-audit.csv"
+---
+
+`r if(Sys.getenv('CONNECT_SERVER') == '') { "<h4>ERROR: You must set the CONNECT_SERVER environment variable</h4>\n" }` `r if(Sys.getenv('CONNECT_API_KEY') == '') { "<h4>ERROR: You must set the CONNECT_API_KEY environment variable</h4>\n" }` `r if(Sys.getenv('CONNECT_API_KEY') == '' || Sys.getenv('CONNECT_SERVER') == '') { knitr::knit_exit() }`
+
+## List all unsupported TensorFlow content
+
+**Starting in Posit Connect version 2023.01.0, the TensorFlow Saved Model `app_mode` is unsupported**
+
+After performing this upgrade:
+
+- Configuration files that include `Server.TensorFlowEnabled`, will cause an error during Connect startup.
+- Existing legacy TensorFlow Saved Model content will no longer run. An HTTP 502 error will be returned for all requests to these APIs.
+
+Before you begin an upgrade to Posit Connect 2023.01.0, we recommend taking the following actions:
+
+- Set a [System Message](https://docs.posit.co/connect/admin/server-management/#system-messages) on the server to warn Publishers about your upgrade timeline and the breaking change.
+- Use this report to identify all unsupported TensorFlow content.
+- Contact any users who have content that will break due to this upgrade. 
+- Let Publishers know that moving forward TensorFlow models can be deployed as a [Plumber API](https://tensorflow.rstudio.com/guides/deploy/plumber.html), [Shiny application](https://tensorflow.rstudio.com/guides/deploy/shiny), Python API framework, or other supported content type. 
+
+
+---
+
+To pull a complete list of the content items on your Connect server, you must use an API key generated from an Admin account. Publisher account API keys will only return content items which the publisher user has been given access to view or edit.
+
+Requirements:
+
+-   [Administrator API Key](https://docs.posit.co/connect/user/api-keys/#api-keys-creating){target="_blank"}
+-   Posit Connect server URL
+
+```{r include=FALSE}
+library(httr)
+library(tidyr)
+
+# Use the /v1/content endpoint to retrieve the full list of content items
+result <- GET(
+  paste0(Sys.getenv("CONNECT_SERVER"),"__api__/v1/content"),
+    add_headers(Authorization = paste("Key", Sys.getenv("CONNECT_API_KEY"))))
+
+# Create a tibble for the content list result response
+df_full <- unnest_wider(tibble::tibble(dat = content(result)), dat) 
+```
+
+### Explore the content list
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(dplyr)
+
+# Filter the full response to select specific fields for viewing
+df_view <- df_full %>%
+  select(name, title, dashboard_url, app_mode, access_type, py_version, created_time, last_deployed_time, owner_guid) %>%
+  filter(app_mode == "tensorflow-saved-model")
+
+# Request a page of up to 25 users.
+resp <- GET(
+  paste0(Sys.getenv("CONNECT_SERVER"), "__api__/v1/users?page_size=25"),
+  add_headers(Authorization = paste("Key", Sys.getenv("CONNECT_API_KEY")))
+)
+payload <- content(resp)
+
+payload_list <- list()
+# While the current page has results, add its contents to the list holder
+# then advance to the next page.
+while(length(payload$result) > 0) {
+
+  payload_list[[length(payload_list) + 1]] <- payload$results
+
+  # get the next page
+  nextPage <- payload$current_page + 1
+  resp <- GET(
+    paste0(Sys.getenv("CONNECT_SERVER"), "__api__/v1/users?page_size=25&page_number=", nextPage),
+    add_headers(Authorization = paste("Key", Sys.getenv("CONNECT_API_KEY")))
+  )
+  payload <- content(resp)
+}
+
+# Unnest the list of lists into a single column tibble of lists
+users_list <- unnest_longer(tibble::tibble(dat = payload_list), dat) 
+
+# Rectangle the tibble of lists into a tibble of usable column data
+df_users <- unnest_wider(users_list, dat)
+
+# Match owner_guid from df_view to the users guid
+df_owners_view <- df_view %>%
+  left_join(df_users, by=c('owner_guid' = 'guid')) %>%
+  select(name, title, dashboard_url, app_mode, access_type, last_deployed_time, owner_guid, username)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(reactable)
+
+# Use reactable to create a nicely formatted table
+reactable(df_owners_view, searchable = TRUE, highlight = TRUE, columns = list(
+  name = colDef(name = "Name"),
+  title = colDef(name = "Title"),
+  dashboard_url = colDef(name = "Content URL", cell = function(value) {
+    htmltools::tags$a(href = value, target = "_blank", "Link")
+    }),
+  app_mode = colDef(name = "Type"),
+  access_type = colDef(name = "Access Level"),
+  last_deployed_time = colDef(name = "Last Deployed", format = colFormat(datetime = TRUE)),
+  owner_guid = colDef(name = "Owner"),
+  username = colDef(name = "Username")
+))
+```
+
+### Download this report
+
+```{r include=FALSE}
+
+# Write the full content list to a CSV file for download
+write.csv(df_owners_view, "tensorflow-audit.csv", row.names=FALSE)
+```
+
+[tensorflow-audit.csv](tensorflow-audit.csv)
+
+<br>
+
+### Gather content owner contact information
+
+To contact content owners ahead of upgrading to 2023.01.0, use the `/v1/users` API to enumerate all users, then join/match the user `guid` to the content `owner_guid`.
+
+<br>
+
+#### Summary Table: Content owners and number of content items
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#library(httr)
+#library(tidyr)
+
+# Summarize 
+summary_tbl <- df_view %>%
+  group_by(owner_guid) %>%
+  summarise(count = n()) %>%
+  left_join(df_users, by=c('owner_guid' = 'guid')) %>%
+  select(first_name, last_name, username, count, email, user_role, locked)
+
+knitr::kable(summary_tbl)
+```
+
+<br>
+
+### Additional Considerations
+
+**Documentation:**
+
+-   [Server API Doc Reference](https://docs.rstudio.com/connect/api/)
+-   [Server API Cookbook](https://docs.rstudio.com/connect/cookbook/)
+
+#### Delete a Content Item
+
+The Posit Connect Server API can also be leveraged to delete a content item. Deleting content is a destructive operation and cannot be reversed. 
+
+Use the [`DELETE /v1/content/{guid}`](https://docs.rstudio.com/connect/api/#delete-/v1/content/{guid}) endpoint. A successful request will return a 204 HTTP status code with an empty response.
+
+**Example:** 
+```
+curl --silent --show-error -L --max-redirs 0 --fail -X DELETE \
+    -H "Authorization: Key ${CONNECT_API_KEY}" \
+    "${CONNECT_SERVER}__api__/v1/content/ccbd1a41-90a0-4b7b-89c7-16dd9ad47eb5"
+# =>
+```
+
