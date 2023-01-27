@@ -12,21 +12,21 @@ rmd_output_metadata:
 
 ## List all content items with an unsupported version of Python
 
-**Starting in RStudio Connect version 2022.03.0, the minimum version of Python is 3.5**
+**Starting in Posit Connect version 2023.01.0, the minimum version of Python is 3.7**
 
 After performing this upgrade:
 
-- Configuration files that include Python 2, or Python 3 versions prior to 3.5, will cause an error during Connect startup.
+- Configuration files that include Python 2, or Python 3 versions prior to 3.7, will cause an error during Connect startup.
 - Existing R Markdown reports and Jupyter Notebooks that use older Python versions can still be viewed. However, they cannot be deployed to Connect or re-rendered.
 - Existing applications and APIs that use older Python versions will no longer run. An HTTP 502 error will be returned for all requests to these applications.
 
-Before you begin an upgrade to RStudio Connect 2022.03.0, we recommend taking the following actions:
+Before you begin an upgrade to RStudio Connect 2023.01.0, we recommend taking the following actions:
 
 - Set a [System Message](https://docs.rstudio.com/connect/admin/server-management/#system-messages) on the server to warn Publishers about your upgrade timeline and the breaking change.
 - Use this report to identify all content using an unsupported Python version.
 - Contact any users who have content that will break due to this upgrade. 
-- Let publishers know that content can be re-published to the same location with Python 3.5+, preserving existing settings like environment variables, access permissions, or runtime settings.
-- Any scheduled reports that continue to run will send error emails, so we recommend turning off the scheduler or re-publishing the content with Python 3.5+.
+- Let publishers know that content can be re-published to the same location with Python 3.7+, preserving existing settings like environment variables, access permissions, or runtime settings.
+- Any scheduled reports that continue to run will send error emails, so we recommend turning off the scheduler or re-publishing the content with Python 3.7+.
 
 ---
 
@@ -55,10 +55,42 @@ df_full <- unnest_wider(tibble::tibble(dat = content(result)), dat)
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 library(dplyr)
 
-# Filter the full response to select specific fields for viewing
-df_view <- df_full %>%
-  select(name, title, dashboard_url, app_mode, access_type, py_version, created_time, last_deployed_time, owner_guid) %>%
-  filter(py_version < 3.5)
+# Retain only MAJOR.MINOR version components.
+
+major <- function(versions) {
+  sapply(versions, function(version) {
+    if (is.na(version) || version == "") {
+      NA
+    } else {
+      parts <- strsplit(version, ".", fixed = TRUE)[[1]]
+      parts[1]
+    }
+  })
+}
+
+minor <- function(versions) {
+  sapply(versions, function(version) {
+    if (is.na(version) || version == "") {
+      NA
+    } else {
+      parts <- strsplit(version, ".", fixed = TRUE)[[1]]
+      as.integer(parts[2])
+    }
+  })
+}
+
+df_view <- df_full %>% 
+  mutate(python_major = major(py_version)) %>%
+  mutate(python_minor = minor(py_version))
+
+python_2_unsupported <- df_view %>%
+  filter(python_major == 2)
+
+python_3_unsupported <- df_view %>%
+  filter(python_major == 3 & python_minor < 7)
+
+python_unsupported <- rbind(python_2_unsupported, python_3_unsupported) %>%
+  select(name, title, dashboard_url, app_mode, access_type, py_version, created_time, last_deployed_time, owner_guid)
 
 # Request a page of up to 25 users.
 resp <- GET(
@@ -90,7 +122,7 @@ users_list <- unnest_longer(tibble::tibble(dat = payload_list), dat)
 df_users <- unnest_wider(users_list, dat)
 
 # Match owner_guid from df_view to the users guid
-df_owners_view <- df_view %>%
+df_owners_view <- python_unsupported %>%
   left_join(df_users, by=c('owner_guid' = 'guid')) %>%
   select(name, title, dashboard_url, app_mode, access_type, py_version, last_deployed_time, owner_guid, username)
 ```
@@ -129,7 +161,7 @@ write.csv(df_owners_view, "python-runtime-audit.csv", row.names=FALSE)
 
 ### Gather content owner contact information
 
-To contact content owners ahead of upgrading to 2022.03.0, use the `/v1/users` API to enumerate all users, then join/match the user `guid` to the content `owner_guid`.
+To contact content owners ahead of upgrading to 2023.01.0, use the `/v1/users` API to enumerate all users, then join/match the user `guid` to the content `owner_guid`.
 
 <br>
 
@@ -140,7 +172,7 @@ To contact content owners ahead of upgrading to 2022.03.0, use the `/v1/users` A
 #library(tidyr)
 
 # Summarize 
-summary_tbl <- df_view %>%
+summary_tbl <- python_unsupported %>%
   group_by(owner_guid) %>%
   summarise(count = n()) %>%
   left_join(df_users, by=c('owner_guid' = 'guid')) %>%
@@ -160,7 +192,7 @@ knitr::kable(summary_tbl)
 
 #### Delete a Content Item
 
-The RStudio Connect Server API can also be leveraged to delete a content item. Deleting content is a destructive operation and cannot be reversed. 
+The Posit Connect Server API can also be leveraged to delete a content item. Deleting content is a destructive operation and cannot be reversed. 
 
 Use the [`DELETE /v1/content/{guid}`](https://docs.rstudio.com/connect/api/#delete-/v1/content/{guid}) endpoint. A successful request will return a 204 HTTP status code with an empty response.
 
